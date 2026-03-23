@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="輸液計算">
+<meta name="theme-color" content="#0f1923">
+<title>輸液計算</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --bg:      #0f1923;
+  --bg2:     #161f2c;
+  --panel:   #1c2736;
+  --border:  #263040;
+  --accent:  #3b9eff;
+  --accent2: #00d4aa;
+  --accent3: #ff6b6b;
+  --amber:   #ffb347;
+  --text:    #e8edf5;
+  --text2:   #8a9ab5;
+  --text3:   #4a5a6e;
+  --card:    #1a2a3a;
+  --card-on: #1e3550;
+  --font:    -apple-system,'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;
+  --sat-t:   env(safe-area-inset-top,0px);
+  --sat-b:   env(safe-area-inset-bottom,0px);
+  --hh:      50px;
+  --th:      38px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;-webkit-font-smoothing:antialiased}
+
+/* ── App shell ── */
+.app{display:flex;flex-direction:column;height:100dvh;padding-top:var(--sat-t);padding-bottom:var(--sat-b)}
+
+/* ── Header ── */
+.hdr{flex-shrink:0;height:var(--hh);background:var(--panel);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;z-index:20;
+  box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.hdr-logo{font-size:15px;font-weight:800;color:var(--accent);letter-spacing:-.02em;white-space:nowrap}
+.hdr-logo span{color:var(--text3);font-weight:400;font-size:10px;margin-left:4px}
+.hdr input{flex:1;min-width:0;background:var(--bg2);border:1px solid var(--border);
+  color:var(--text);border-radius:7px;padding:5px 9px;font-size:12px}
+.hdr input::placeholder{color:var(--text3)}
+.btn-reset{background:var(--border);color:var(--text2);border:none;border-radius:7px;
+  padding:6px 10px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.btn-reset:active{opacity:.65}
+
+/* ── Result area ── */
+.result-area{flex-shrink:0;background:var(--bg2);border-bottom:2px solid var(--border)}
+.tabs{display:flex;height:var(--th)}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:var(--text3);cursor:pointer;letter-spacing:.04em;
+  border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+.panes{overflow:hidden}
+.pane{display:none;padding:10px 12px 12px}
+.pane.on{display:block}
+
+/* ── Stat grid (Basic tab) ── */
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.sc{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+  padding:6px 8px;display:flex;flex-direction:column;gap:1px}
+.sc.w2{grid-column:span 2;flex-direction:row;align-items:center;justify-content:space-between}
+.sl{font-size:8.5px;color:var(--text3);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.sv{font-size:16px;font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.1}
+.su{font-size:8.5px;color:var(--text3)}
+.sc.w2 .sv{font-size:20px}
+.sc.w2 .su{align-self:flex-end;padding-bottom:2px}
+
+/* ── NPC/N tab ── */
+.npcn-wrap{display:flex;flex-direction:column;gap:8px}
+.npcn-top{display:flex;align-items:center;gap:12px}
+.npcn-big{font-size:44px;font-weight:900;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1}
+.npcn-side{display:flex;flex-direction:column;gap:4px}
+.npcn-badge{font-size:11px;font-weight:700}
+.npcn-badge.ok{color:var(--accent2)}.npcn-badge.warn{color:var(--amber)}.npcn-badge.low{color:var(--accent3)}
+.npcn-sub{font-size:10px;color:var(--text2);line-height:1.6}
+.nbar{width:100%;height:7px;background:var(--border);border-radius:999px;overflow:hidden}
+.nbar-f{height:100%;border-radius:999px;background:var(--accent2);transition:width .35s cubic-bezier(.4,0,.2,1)}
+.nbar-f.warn{background:var(--amber)}.nbar-f.low{background:var(--accent3)}
+.npcn-ref{display:flex;justify-content:space-between;font-size:8.5px;color:var(--text3)}
+
+/* ── CPF tab ── */
+.cpf-rows{display:flex;flex-direction:column;gap:8px}
+.cpf-row{display:flex;align-items:center;gap:8px}
+.cpf-key{width:11px;font-size:11px;font-weight:800}
+.cpf-key.c{color:#f39c12}.cpf-key.p{color:#3498db}.cpf-key.f{color:#2ecc71}
+.cpf-track{flex:1;height:10px;background:var(--border);border-radius:999px;overflow:hidden}
+.cpf-fill{height:100%;border-radius:999px;transition:width .35s}
+.cpf-fill.c{background:linear-gradient(90deg,#e67e22,#f39c12)}
+.cpf-fill.p{background:linear-gradient(90deg,#2980b9,#3498db)}
+.cpf-fill.f{background:linear-gradient(90deg,#27ae60,#2ecc71)}
+.cpf-val{width:64px;text-align:right;font-size:11px;color:var(--text2);font-variant-numeric:tabular-nums}
+.cpf-footer{display:flex;justify-content:flex-end;padding-top:4px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text2)}
+.cpf-footer b{color:var(--text);margin-left:5px;font-variant-numeric:tabular-nums}
+
+/* ── Drug scroll ── */
+.drug-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:var(--bg)}
+.drug-area::-webkit-scrollbar{display:none}
+
+/* ── Category ── */
+.cat-block{}
+.cat-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px;background:var(--bg);
+  position:sticky;top:0;z-index:5;
+  border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.cat-label{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+.cat-chev{font-size:9px;color:var(--text3);transition:transform .2s}
+.cat-block.col .cat-chev{transform:rotate(-90deg)}
+.cat-body{overflow:hidden}
+.cat-block.col .cat-body{display:none}
+
+/* ── 2-column drug grid ── */
+.drug-grid{display:grid;grid-template-columns:1fr 1fr;border-left:1px solid var(--border)}
+
+/* ── Drug cell ── */
+.dc{
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:7px 8px 7px 10px;
+  background:var(--bg);
+  border-right:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  min-height:56px;
+  transition:background .1s;
+  gap:4px;
+}
+.dc.on{background:var(--card-on)}
+
+.dc-name{font-size:11.5px;font-weight:600;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.dc-note{font-size:9.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Stepper ── */
+.stepper{display:flex;align-items:center;gap:5px}
+.st-btn{
+  width:28px;height:28px;
+  background:var(--panel);border:1px solid var(--border);
+  color:var(--text2);border-radius:7px;
+  font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;flex-shrink:0;user-select:none;-webkit-user-select:none;
+  transition:background .1s,color .1s,transform .08s;
+}
+.st-btn:active{background:var(--accent);color:#fff;transform:scale(.9)}
+.st-num{
+  flex:1;text-align:center;
+  font-size:18px;font-weight:800;
+  color:var(--text3);
+  font-variant-numeric:tabular-nums;
+  transition:color .15s;
+  min-width:20px;
+}
+.st-num.on{color:var(--accent)}
+
+/* Badges */
+.badge{display:inline-block;font-size:8px;padding:1px 3px;border-radius:3px;font-weight:700;margin-left:3px;vertical-align:middle}
+.badge-tpn{background:#3a2c10;color:#f6ad3a}
+.badge-aa {background:#0d3020;color:#3ecf8e}
+.badge-fat{background:#2a1a3e;color:#b888f8}
+.badge-ab {background:#2a1010;color:#fc8080}
+
+/* ── Desktop 2-col ── */
+@media(min-width:640px){
+  .app{flex-direction:row;flex-wrap:wrap}
+  .hdr{width:100%}
+  .result-area{width:280px;flex-shrink:0;height:calc(100dvh - var(--hh) - var(--sat-t) - var(--sat-b));
+    border-right:1px solid var(--border);border-bottom:none;display:flex;flex-direction:column;overflow-y:auto}
+  .tabs{display:none}
+  .panes{flex:1;display:flex;flex-direction:column;gap:10px;padding:12px;overflow-y:auto}
+  .pane{display:block!important;padding:0}
+  .drug-area{flex:1;height:calc(100dvh - var(--hh) - var(--sat-t) - var(--sat-b))}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<header class="hdr">
+  <div class="hdr-logo">輸液計算<span>IV Calc</span></div>
+  <input type="text" id="pts-id" placeholder="患者ID（任意）" autocomplete="off">
+  <button class="btn-reset" onclick="resetAll()">↺ リセット</button>
+</header>
+
+<!-- Result area -->
+<div class="result-area">
+  <div class="tabs">
+    <div class="tab on" data-t="basic" onclick="switchTab(this)">基本値</div>
+    <div class="tab"    data-t="npcn"  onclick="switchTab(this)">NPC/N</div>
+    <div class="tab"    data-t="cpf"   onclick="switchTab(this)">CPF</div>
+  </div>
+  <div class="panes">
+
+    <!-- Basic -->
+    <div class="pane on" id="pane-basic">
+      <div class="sg">
+        <div class="sc w2">
+          <div><div class="sl">熱量</div><div class="sv" id="r-kcal">0</div></div>
+          <div class="su">kcal</div>
+        </div>
+        <div class="sc w2">
+          <div><div class="sl">容量</div><div class="sv" id="r-vol">0</div></div>
+          <div class="su">mL</div>
+        </div>
+        <div class="sc"><div class="sl">Na</div><div class="sv" id="r-na">0</div><div class="su">mEq</div></div>
+        <div class="sc"><div class="sl">K</div><div class="sv" id="r-k">0</div><div class="su">mEq</div></div>
+        <div class="sc"><div class="sl">Ca</div><div class="sv" id="r-ca">0</div><div class="su">mEq</div></div>
+        <div class="sc"><div class="sl">Mg</div><div class="sv" id="r-mg">0</div><div class="su">mEq</div></div>
+        <div class="sc w2">
+          <div><div class="sl">蛋白質</div><div class="sv" id="r-aa">0</div></div>
+          <div class="su">g</div>
+        </div>
+        <div class="sc w2">
+          <div><div class="sl">糖質</div><div class="sv" id="r-glc">0</div></div>
+          <div class="su">g</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC/N -->
+    <div class="pane" id="pane-npcn">
+      <div class="npcn-wrap">
+        <div class="npcn-top">
+          <div class="npcn-big" id="rn-val">—</div>
+          <div class="npcn-side">
+            <div class="npcn-badge ok" id="rn-badge">窒素量 = 0</div>
+            <div class="npcn-sub">
+              NPC <span id="rn-npc" style="color:var(--text)">0</span> kcal<br>
+              N&nbsp;&nbsp; <span id="rn-n" style="color:var(--text)">0.00</span> g<br>
+              Na換算 <span id="rn-na" style="color:var(--text)">0.0</span> g
+            </div>
+          </div>
+        </div>
+        <div class="nbar"><div class="nbar-f" id="nbar" style="width:0%"></div></div>
+        <div class="npcn-ref">
+          <span>敗血症 80〜120</span>
+          <span>通常 150〜200</span>
+          <span>腎不全 300〜</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CPF -->
+    <div class="pane" id="pane-cpf">
+      <div class="cpf-rows">
+        <div class="cpf-row">
+          <span class="cpf-key c">C</span>
+          <div class="cpf-track"><div class="cpf-fill c" id="cpf-c-b" style="width:0%"></div></div>
+          <span class="cpf-val"><span id="cpf-c">0</span> kcal</span>
+        </div>
+        <div class="cpf-row">
+          <span class="cpf-key p">P</span>
+          <div class="cpf-track"><div class="cpf-fill p" id="cpf-p-b" style="width:0%"></div></div>
+          <span class="cpf-val"><span id="cpf-p">0</span> kcal</span>
+        </div>
+        <div class="cpf-row">
+          <span class="cpf-key f">F</span>
+          <div class="cpf-track"><div class="cpf-fill f" id="cpf-f-b" style="width:0%"></div></div>
+          <span class="cpf-val"><span id="cpf-f">0</span> kcal</span>
+        </div>
+        <div class="cpf-footer">合計 <b id="cpf-tot">0</b> kcal</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Drug list -->
+<div class="drug-area" id="drug-area"></div>
+
+</div><!-- /.app -->
+<script>
+/* ── Drug DB ── */
+const DB=[
+  {cat:'生理食塩液',     name:'生食 50mL',           vol:50,   Na:7.7,  K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:10},
+  {cat:'生理食塩液',     name:'生食 100mL',           vol:100,  Na:15.4, K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:10},
+  {cat:'生理食塩液',     name:'生食 250mL',           vol:250,  Na:38.5, K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:6 },
+  {cat:'生理食塩液',     name:'生食 500mL',           vol:500,  Na:77,   K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:6 },
+  {cat:'生理食塩液',     name:'生食 1000mL',          vol:1000, Na:154,  K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:4 },
+  {cat:'糖液各種',       name:'5%糖液 50mL',          vol:50,   Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:2.5,  fat:0,  kcal:10,   N:0,     mx:10},
+  {cat:'糖液各種',       name:'5%糖液 100mL',         vol:100,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:5,    fat:0,  kcal:20,   N:0,     mx:10},
+  {cat:'糖液各種',       name:'5%糖液 250mL',         vol:250,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:12.5, fat:0,  kcal:50,   N:0,     mx:6 },
+  {cat:'糖液各種',       name:'5%糖液 500mL',         vol:500,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:25,   fat:0,  kcal:100,  N:0,     mx:6 },
+  {cat:'糖液各種',       name:'10%糖液 500mL',        vol:500,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:50,   fat:0,  kcal:200,  N:0,     mx:6 },
+  {cat:'糖液各種',       name:'50%糖液 200mL',        vol:200,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:100,  fat:0,  kcal:400,  N:0,     mx:4 },
+  {cat:'糖液各種',       name:'ブドウ糖50% 20mL',     vol:20,   Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:10,   fat:0,  kcal:40,   N:0,     mx:10},
+  {cat:'糖液各種',       name:'70%糖液 350mL',        vol:350,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:245,  fat:0,  kcal:980,  N:0,     mx:4 },
+  {cat:'水',             name:'注射用水 100mL',       vol:100,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:0,  kcal:0,    N:0,     mx:6 },
+  {cat:'TPN用輸液', badge:'tpn', name:'エルネオパ1号',  note:'糖120g / AA20g / Vit+TE',
+    vol:1000, Na:35,   K:20,  Ca:5,   Mg:5,   aa:20,    glc:120,  fat:0,  kcal:560,  N:3.2,  mx:4 },
+  {cat:'TPN用輸液', badge:'tpn', name:'エルネオパ2号',  note:'糖175g / AA30g / Vit+TE',
+    vol:1000, Na:50.6, K:27,  Ca:5,   Mg:5,   aa:30,    glc:175,  fat:0,  kcal:820,  N:4.81, mx:4 },
+  {cat:'TPN用輸液', badge:'tpn', name:'フルカリック3号', note:'糖250g / AA40g / Vit',
+    vol:1103, Na:50,   K:25,  Ca:4.5, Mg:5,   aa:40,    glc:250,  fat:0,  kcal:1160, N:6.4,  mx:4 },
+  {cat:'TPN用輸液', badge:'tpn', name:'ハイカリックRF',  note:'K・Pフリー / 腎不全基本液',
+    vol:250,  Na:12.5, K:0,   Ca:1.5, Mg:1.5, aa:0,     glc:125,  fat:0,  kcal:500,  N:0,    mx:6 },
+  {cat:'末梢PPN（糖・AA）', badge:'aa', name:'ビーフリード',  note:'糖37.5g / AA15g / 500mL',
+    vol:500,  Na:17.5, K:10,  Ca:2.5, Mg:2.5, aa:15,    glc:37.5, fat:0,  kcal:210,  N:2.35, mx:6 },
+  {cat:'末梢PPN（糖・AA）', badge:'aa', name:'トリフリード',  note:'糖75g / AA30g / 1000mL',
+    vol:1000, Na:35,   K:20,  Ca:5,   Mg:5,   aa:30,    glc:75,   fat:0,  kcal:420,  N:4.7,  mx:4 },
+  {cat:'脂肪乳剤', badge:'fat',         name:'イントラリポス20%', note:'脂肪20g / 200kcal / 100mL',
+    vol:100,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:0,     glc:0,    fat:20, kcal:200,  N:0,    mx:6 },
+  {cat:'末梢PPN（脂肪含有）', badge:'fat', name:'エネフリード', note:'AA15g / 脂肪10g / 550mL',
+    vol:550,  Na:17.5, K:10,  Ca:2.5, Mg:2.5, aa:15,    glc:37.5, fat:10, kcal:310,  N:2.35, mx:6 },
+  {cat:'開始液（1号液）',    name:'ソリタT1 200mL',   note:'Na18mEq / Kフリー',
+    vol:200,  Na:18,   K:0,   Ca:0,   Mg:0,   aa:0,     glc:5.2,  fat:0,  kcal:20.8, N:0,    mx:6 },
+  {cat:'開始液（1号液）',    name:'ソリタT1 500mL',   note:'Na45mEq / Kフリー',
+    vol:500,  Na:45,   K:0,   Ca:0,   Mg:0,   aa:0,     glc:13,   fat:0,  kcal:52,   N:0,    mx:6 },
+  {cat:'維持液（3号液）',    name:'ソルデム3A 500mL', note:'Na17.5 / K10 / 糖21.5g',
+    vol:500,  Na:17.5, K:10,  Ca:0,   Mg:0,   aa:0,     glc:21.5, fat:0,  kcal:86,   N:0,    mx:6 },
+  {cat:'維持液（3号液）',    name:'ソリタT3G 200mL',  note:'Na7 / K4 / 糖15g',
+    vol:200,  Na:7,    K:4,   Ca:0,   Mg:0,   aa:0,     glc:15,   fat:0,  kcal:60,   N:0,    mx:8 },
+  {cat:'維持液（3号液）',    name:'ソリタT3G 500mL',  note:'Na17.5 / K10 / 糖37.5g',
+    vol:500,  Na:17.5, K:10,  Ca:0,   Mg:0,   aa:0,     glc:37.5, fat:0,  kcal:150,  N:0,    mx:6 },
+  {cat:'維持液（3号液）',    name:'KN3 200mL',         note:'Na10 / K4 / 糖5.4g',
+    vol:200,  Na:10,   K:4,   Ca:0,   Mg:0,   aa:0,     glc:5.4,  fat:0,  kcal:21.6, N:0,    mx:8 },
+  {cat:'維持液（3号液）',    name:'ヴィーン3G 500mL',  note:'Na17.5 / K10 / 糖37.5g',
+    vol:500,  Na:17.5, K:10,  Ca:0,   Mg:0,   aa:0,     glc:37.5, fat:0,  kcal:150,  N:0,    mx:6 },
+  {cat:'術後回復液（4号液）', name:'ソリタT4 500mL',  note:'Na15mEq / Kフリー',
+    vol:500,  Na:15,   K:0,   Ca:0,   Mg:0,   aa:0,     glc:21.5, fat:0,  kcal:86,   N:0,    mx:4 },
+  {cat:'細胞外液補充液',     name:'ソルアセトF 500mL', note:'酢酸リンゲル / Na65.5',
+    vol:500,  Na:65.5, K:2.5, Ca:1,   Mg:0.5, aa:0,     glc:0,    fat:0,  kcal:0,    N:0,    mx:6 },
+  {cat:'細胞外液補充液',     name:'ビカネイト 500mL',  note:'重炭酸リンゲル / Na65',
+    vol:500,  Na:65,   K:2,   Ca:1.5, Mg:0.5, aa:0,     glc:0,    fat:0,  kcal:0,    N:0,    mx:6 },
+  {cat:'細胞外液補充液',     name:'フィジオ140 500mL', note:'1%糖加酢酸リンゲル',
+    vol:500,  Na:70,   K:2,   Ca:1.5, Mg:0.75,aa:0,     glc:5,    fat:0,  kcal:20,   N:0,    mx:6 },
+  {cat:'細胞外液補充液',     name:'ポタコールR 500mL', note:'マルトース加乳酸リンゲル',
+    vol:500,  Na:65,   K:2,   Ca:1.5, Mg:0,   aa:0,     glc:13.5, fat:0,  kcal:54,   N:0,    mx:6 },
+  {cat:'アミノ酸製剤', badge:'aa', name:'アミパレン 300mL', note:'総合AA 10% / 30g',
+    vol:300,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:30,    glc:0,    fat:0,  kcal:120,  N:4.81, mx:4 },
+  {cat:'腎不全用AA', badge:'aa',   name:'ネオアミユー 200mL', note:'BCAA強化 / AA11.84g',
+    vol:200,  Na:0.4,  K:0,   Ca:0,   Mg:0,   aa:11.84, glc:0,    fat:0,  kcal:47,   N:1.63, mx:4 },
+  {cat:'腎不全用AA', badge:'aa',   name:'キドミン 200mL',    note:'BCAA強化 / AA12.5g',
+    vol:200,  Na:0,    K:0,   Ca:0,   Mg:0,   aa:12.5,  glc:0,    fat:0,  kcal:50,   N:2.0,  mx:4 },
+  {cat:'肝不全用AA', badge:'aa',   name:'アミノレバン 200mL', note:'BCAA富化 / AA15.98g / Fischer比37',
+    vol:200,  Na:3,    K:0,   Ca:0,   Mg:0,   aa:15.98, glc:0,    fat:0,  kcal:64,   N:2.44, mx:4 },
+  {cat:'電解質補正', name:'塩化Na 20mL',     note:'3.08mEq/本',  vol:20,  Na:3.08,K:0,  Ca:0, Mg:0, aa:0,glc:0,fat:0,kcal:0,N:0,mx:10},
+  {cat:'電解質補正', name:'アスパラK',       note:'K 10mEq/本', vol:10,  Na:0,   K:10, Ca:0, Mg:0, aa:0,glc:0,fat:0,kcal:0,N:0,mx:10},
+  {cat:'電解質補正', name:'カルチコール',    note:'Ca 3.9mEq/本（8.5% 10mL）', vol:10,  Na:0,   K:0,  Ca:3.9, Mg:0, aa:0,glc:0,fat:0,kcal:0,N:0,mx:6 },
+  {cat:'電解質補正', name:'KCl 20mEq/20mL', note:'K+Cl 20mEq', vol:20,  Na:0,   K:20, Ca:0, Mg:0, aa:0,glc:0,fat:0,kcal:0,N:0,mx:6 },
+  {cat:'その他（抗菌薬）', badge:'ab', name:'ホスミシン 0.5g', note:'Na≈2.75mEq', vol:0,Na:2.75,K:0,Ca:0,Mg:0,aa:0,glc:0,fat:0,kcal:0,N:0,mx:6},
+  {cat:'その他（抗菌薬）', badge:'ab', name:'ホスミシン 2g',   note:'Na≈11mEq',   vol:0,Na:11,  K:0,Ca:0,Mg:0,aa:0,glc:0,fat:0,kcal:0,N:0,mx:4},
+  {cat:'その他（抗菌薬）', badge:'ab', name:'タゾピベ 4.5g',  note:'Na≈9mEq',    vol:0,Na:9,   K:0,Ca:0,Mg:0,aa:0,glc:0,fat:0,kcal:0,N:0,mx:4},
+];
+
+const qty = new Array(DB.length).fill(0);
+const BADGE_LABEL = {tpn:'TPN',aa:'AA',fat:'脂肪',ab:'抗菌薬'};
+
+/* ── Build UI ── */
+function buildUI(){
+  const area = document.getElementById('drug-area');
+  const cats = {};
+  DB.forEach((d,i)=>{
+    if(!cats[d.cat]) cats[d.cat]=[];
+    cats[d.cat].push(i);
+  });
+
+  Object.entries(cats).forEach(([cat, ids])=>{
+    const block = document.createElement('div');
+    block.className = 'cat-block';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'cat-hdr';
+    hdr.innerHTML = `<span class="cat-label">${cat}</span><span class="cat-chev">▼</span>`;
+    hdr.onclick = ()=> block.classList.toggle('col');
+    block.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = 'cat-body';
+    const grid = document.createElement('div');
+    grid.className = 'drug-grid';
+
+    ids.forEach(i=>{
+      const d = DB[i];
+      const cell = document.createElement('div');
+      cell.className = 'dc';
+      cell.id = `dc-${i}`;
+
+      const badgeHtml = d.badge ? `<span class="badge badge-${d.badge}">${BADGE_LABEL[d.badge]}</span>` : '';
+      const noteHtml  = d.note  ? `<div class="dc-note">${d.note}</div>` : '';
+
+      cell.innerHTML = `
+        <div class="dc-name">${d.name}${badgeHtml}</div>
+        ${noteHtml}
+        <div class="stepper">
+          <div class="st-btn" id="dec-${i}">◀</div>
+          <div class="st-num" id="num-${i}">0</div>
+          <div class="st-btn" id="inc-${i}">▶</div>
+        </div>`;
+
+      grid.appendChild(cell);
+    });
+
+    body.appendChild(grid);
+    block.appendChild(body);
+    area.appendChild(block);
+  });
+
+  // Bind events
+  DB.forEach((d,i)=>{
+    document.getElementById(`dec-${i}`).addEventListener('click',()=>setQty(i, qty[i]-1));
+    document.getElementById(`inc-${i}`).addEventListener('click',()=>setQty(i, qty[i]+1));
+    // Long-press to zero
+    let timer;
+    const decBtn = document.getElementById(`dec-${i}`);
+    decBtn.addEventListener('pointerdown',()=>{ timer=setTimeout(()=>setQty(i,0), 600) });
+    decBtn.addEventListener('pointerup',  ()=> clearTimeout(timer));
+    decBtn.addEventListener('pointerleave',()=>clearTimeout(timer));
+  });
+}
+
+function setQty(i, v){
+  v = Math.max(0, Math.min(DB[i].mx||10, v));
+  if(qty[i]===v) return;
+  qty[i] = v;
+  const numEl = document.getElementById(`num-${i}`);
+  const cell  = document.getElementById(`dc-${i}`);
+  numEl.textContent = v;
+  numEl.classList.toggle('on', v>0);
+  cell.classList.toggle('on', v>0);
+  calc();
+}
+
+/* ── Calc ── */
+function calc(){
+  let vol=0,Na=0,K=0,Ca=0,Mg=0,aa=0,glc=0,fat=0,kcal=0,N=0;
+  DB.forEach((d,i)=>{
+    const q=qty[i]; if(!q) return;
+    vol+=d.vol*q; Na+=d.Na*q; K+=d.K*q; Ca+=d.Ca*q; Mg+=d.Mg*q;
+    aa+=d.aa*q; glc+=d.glc*q; fat+=d.fat*q; kcal+=d.kcal*q; N+=d.N*q;
+  });
+
+  const Ckcal=glc*4, Pkcal=aa*4, Fkcal=fat*10;
+  const NPC=Ckcal+Fkcal;
+  const npcn=N>0.001?NPC/N:null;
+
+  // Basic
+  s('r-kcal',f(kcal)); s('r-vol',f(vol));
+  s('r-na',f(Na,1)); s('r-k',f(K,1)); s('r-ca',f(Ca,1)); s('r-mg',f(Mg,1));
+  s('r-aa',f(aa,1)); s('r-glc',f(glc,1));
+
+  // NPC/N
+  s('rn-npc',f(NPC)); s('rn-n',f(N,2)); s('rn-na',f(Na/17,2));
+  if(npcn!==null){
+    s('rn-val',f(npcn,0));
+    const el=document.getElementById('rn-badge');
+    let cls='ok',txt='';
+    if     (npcn<80)  {cls='low'; txt='⚠ 低値 (< 80)'}
+    else if(npcn<100) {cls='warn';txt='▼ やや低め'}
+    else if(npcn<=200){cls='ok';  txt='✓ 適正範囲 (100〜200)'}
+    else              {cls='warn';txt='▲ 高値 (> 200)'}
+    el.className=`npcn-badge ${cls}`; el.textContent=txt;
+    const bar=document.getElementById('nbar');
+    bar.style.width=Math.min(100,npcn/400*100)+'%';
+    bar.className=`nbar-f${npcn<80?' low':npcn>200?' warn':''}`;
+  } else {
+    s('rn-val','—');
+    const el=document.getElementById('rn-badge');
+    el.className='npcn-badge ok'; el.textContent='窒素量 = 0';
+    document.getElementById('nbar').style.width='0%';
+  }
+
+  // CPF
+  s('cpf-c',f(Ckcal)); s('cpf-p',f(Pkcal)); s('cpf-f',f(Fkcal));
+  s('cpf-tot',f(kcal));
+  const T=Ckcal+Pkcal+Fkcal;
+  bar('cpf-c-b', T?Ckcal/T*100:0);
+  bar('cpf-p-b', T?Pkcal/T*100:0);
+  bar('cpf-f-b', T?Fkcal/T*100:0);
+}
+
+/* ── Utils ── */
+const s=(id,v)=>document.getElementById(id).textContent=v;
+const bar=(id,p)=>document.getElementById(id).style.width=Math.min(100,p)+'%';
+const f=(v,d=0)=>isNaN(v)?'—':Number(v.toFixed(d)).toLocaleString('ja-JP',{minimumFractionDigits:d});
+
+function switchTab(el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('pane-'+el.dataset.t).classList.add('on');
+}
+
+function resetAll(){
+  DB.forEach((_,i)=>{
+    if(!qty[i]) return;
+    qty[i]=0;
+    document.getElementById(`num-${i}`).textContent='0';
+    document.getElementById(`num-${i}`).classList.remove('on');
+    document.getElementById(`dc-${i}`).classList.remove('on');
+  });
+  calc();
+}
+
+buildUI(); calc();
+
+// ── PWA Service Worker 登録 ──
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

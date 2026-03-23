@@ -1,0 +1,25 @@
+{
+  "name": "輸液計算ツール",
+  "short_name": "輸液計算",
+  "description": "輸液組成・NPC/N比・CPFバランス計算ツール",
+  "start_url": "/iv-calc/",
+  "display": "standalone",
+  "background_color": "#0f1923",
+  "theme_color": "#0f1923",
+  "orientation": "portrait",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
